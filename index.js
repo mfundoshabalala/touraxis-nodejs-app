@@ -3,6 +3,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const usersRouter = require("./routes/users");
 const tasksRouter = require("./routes/tasks");
+const Task = require("./models/task"); // Import Task model
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -29,3 +30,22 @@ app.use("/api/users", tasksRouter);
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+
+// Scheduled job to update overdue tasks
+setInterval(async () => {
+  const now = new Date();
+  try {
+    const tasks = await Task.find({
+      status: "pending",
+      next_execute_date_time: { $lt: now },
+    });
+
+    tasks.forEach(async (task) => {
+      console.log(`Task overdue: ${task.name}`);
+      task.status = "done";
+      await task.save();
+    });
+  } catch (err) {
+    console.error("Error checking overdue tasks:", err);
+  }
+}, 60000); // Runs every 60 seconds
